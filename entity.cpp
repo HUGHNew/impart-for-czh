@@ -43,7 +43,7 @@ std::ostream& operator<<(std::ostream& out, const Berth& berth) {
 
 std::ostream& operator<<(std::ostream& out, const Boat& boat) {
   return out << "capacity: " << boat.capacity << ", status: " << boat.status
-             << ", dock: " << boat.dock;
+             << ", dock: " << boat.dock << ", approach:" << boat.approach;
 }
 
 std::ostream& operator<<(std::ostream& out, const Goods& goods) {
@@ -53,5 +53,17 @@ std::ostream& operator<<(std::ostream& out, const Goods& goods) {
 
 std::ostream& operator<<(std::ostream& out, const GameStatus& status) {
   return out << "frame: " << status.frame << ", gold: " << status.gold;
+}
+#pragma endregion
+
+
+#pragma region entity interaction function
+int32_t get_boat_status(const Boat& boat, int32_t boat_id, const std::vector<Berth>& berths) {
+  if (boat.idle()) { return 0; }
+  if (berths[boat.dock].goods_todo == 0) {
+    if (berths[boat.dock].goods_done == 0) {
+      return 1;
+    } else return 2;
+  } return 3; // I don't know what it is
 }
 #pragma endregion

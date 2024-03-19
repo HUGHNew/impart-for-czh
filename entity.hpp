@@ -75,7 +75,10 @@ struct Berth {
   constexpr static GridLocation size{4, 4};
   GridLocation pos;
   int32_t transport_time, load_speed;
-  int32_t goods_todo = 0, goods_done = 0, dock_boat_id = -1;
+  int32_t goods_todo = 0, goods_done = 0;
+  int32_t dock_boat_id = -1, book_boat_id = -1;
+  /* What's the sequence of goods loading? */
+  /* Impossible to calculate the goods' value on the berth */
 
   Berth() = default;
   Berth(int32_t x, int32_t y, int32_t trans_time, int32_t load_time)
@@ -83,8 +86,12 @@ struct Berth {
   bool dock(int32_t boat_id) {
     if (dock_boat_id != -1) return false;
     dock_boat_id = boat_id;
+    book_boat_id = -1;
     return true;
   }
+  bool reservable(){ return dock_boat_id == -1 && book_boat_id == -1; }
+  /* no reservable check here */
+  void reserve(int32_t boat_id){ book_boat_id = boat_id; }
   void leave() {
     goods_done = 0;
     dock_boat_id = -1;
@@ -111,19 +118,23 @@ constexpr int32_t transport_time(const Berth& from, const Berth& to) {
 struct Boat {
   constexpr static GridLocation size{2, 4};
   int32_t capacity, status /* 0: move, 1: load, 2: wait */, dock = -1;
-  // for leaving/approaching test
-  int32_t goods = 0;
+  int32_t approach = -1; // for berth dist. it's useless if dock != -1
   bool leaving = false;
 
   Boat() = default;
   Boat(int32_t capacity_) : capacity(capacity_) {}
+  void book(int32_t id) { approach = id; }
   void dockit(int32_t id) {
     dock = id;
+    approach = -1; // reset approaching status (who cares)
     leaving = false;
   }
   void leave() {
     dock = -1;
     leaving = true;
+  }
+  bool idle() const { 
+    return (dock == -1 && status == 1) || (dock != -1 && status == 2);
   }
 };
 
@@ -180,6 +191,15 @@ std::ostream& operator<<(std::ostream& out, const std::deque<_Tp>& sequence) {
   return redirect_helper(out, sequence);
 }
 #pragma endregion  // operator<<
+#pragma endregion
+
+#pragma region entity interaction function
+/**
+ * 0: idle boat. Able to ship to any berth
+ * 1: nothing to do with no goods. Ship to other berth
+ * 2: nothing to do with goods loaded. GO
+*/
+int32_t get_boat_status(const Boat& boat, int32_t boat_id, const std::vector<Berth>& berths);
 #pragma endregion
 
 struct SquareGrid {
