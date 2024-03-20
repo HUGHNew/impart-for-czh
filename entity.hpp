@@ -89,6 +89,7 @@ struct Berth {
     book_boat_id = -1;
     return true;
   }
+  bool docker(int32_t boat_id) const { return dock_boat_id == boat_id; }
   bool reservable(){ return dock_boat_id == -1 && book_boat_id == -1; }
   /* no reservable check here */
   void reserve(int32_t boat_id){ book_boat_id = boat_id; }
@@ -113,6 +114,14 @@ struct Berth {
 };
 constexpr int32_t transport_time(const Berth& from, const Berth& to) {
   return 500; /* frames */
+}
+
+int32_t transport_time(int32_t src_idx, int32_t dst_idx, const std::vector<Berth>& berths) {
+  if (src_idx == -1 || dst_idx == -1) { // They can't both be -1 (VP)
+    return berths[src_idx+dst_idx+1].transport_time;
+  } else {
+    return 500; /* frames */
+  }
 }
 
 struct Boat {
@@ -292,13 +301,3 @@ struct PriorityQueue {
   }
 };
 
-struct Game {
-  EqWeightGrid map;
-  std::deque<Goods> goods;
-  GameStatus status;
-
-  Game() = default;
-  void test() {
-    // goods.erase
-  }
-};

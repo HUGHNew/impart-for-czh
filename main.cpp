@@ -11,15 +11,16 @@ inline void stream_io_init() {
 }
 
 const char* DIR_NAME[] = {"right", "left", "up", "down"};
+const char* BOAT_STATUS[] = {"Idle", "Moving", "Ship", "Go", "Loading"};
 
 /** robot count: 1
- * 1. 22201 -> 26970
+ * 1. 22201 -> 26970/25652
  * 2. 24666 -> 25622
- * 3. 23536 -> 26805
- * 4. 10943 -> 13987
- * 5. 16384 -> 20993
- * 6. 28413 -> 29172
- * 7. 17242 -> 18753
+ * 3. 23536 -> 26805/25858
+ * 4. 10943 -> 13987/13427
+ * 5. 16384 -> 20993/19823
+ * 6. 28413 -> 29172/29732
+ * 7. 17242 -> 18753/18363
  * 8. 20385 -> 22081
  */
 
@@ -101,7 +102,7 @@ int main(int argc, char** argv) {
           robot_target_ptr[robot_id] = &to_goods[robot_id];
           logger->log("to_goods", "robot_forward: ", robot_forward[robot_id],
                       ", robot: ", robot_id,
-                      "track index(robot->goods): ", *robot_dir[robot_id]);
+                      ", track index(robot->goods): ", *robot_dir[robot_id]);
         }
       }
       // on the way
@@ -206,53 +207,58 @@ int main(int argc, char** argv) {
 #pragma region ship/berth load and tranport
     // update dock info for berths
     for (int32_t i = 0; i < boats.size(); ++i) {
-      if (boats[i].dock != -1 && boats[i].status == 1 &&
-          map.terminals[boats[i].dock].dock_boat_id == -1) {
-        bool dock_result = map.terminals[boats[i].dock].dock(i);
-        if (dock_result) {
-          logger->log("dock", "boat: ", i, " docked at berth: ", boats[i].dock);
-        }
-      } else if (boats[i].status == 2) {
-        // move the waiting boat to other berth
-        for (int32_t j = 0; j < map.terminals.size(); ++j) {
-          if (map.terminals[j].goods_todo > 0 &&
-              map.terminals[j].dock_boat_id == -1) {
-            boats[i].dockit(j);
-            writer.ship(i, j);
-            logger->log("reship", "boat: ", i, " goes to berth: ", j);
-            break;
-          }
-        }
+      // only care the loading boat which don't wait or stay at -1
+      if (!(boats[i].dock != -1 && boats[i].status == 1)) continue;
+      if (map.terminals[boats[i].dock].docker(i)) continue;
+      bool dock_result = map.terminals[boats[i].dock].dock(i);
+      if (dock_result) {
+        logger->log("dock", "boat: ", i, " docked at berth: ", boats[i].dock);
+      } else {
+        logger->log("dock", "boat: ", i, " wants to dock at berth: ", boats[i].dock, ", but here lies the boat: ", map.terminals[boats[i].dock].dock_boat_id);
       }
     }
 
-    // the last trip for cash before DDL
-    // TODO: new boat schedule algo
-#if LOG_ENABLE == 1
     for (int32_t b = 0; b < map.terminals.size(); ++b) {
-      logger->log("berth/status", "reservable: ", map.terminals[b].reservable(), "\nBerth:" ,map.terminals[b]);
+      if (map.terminals[b].goods_todo > 0 && map.terminals[b].reservable())
+        logger->log("berth/status", "berth: ", b, '[' ,map.terminals[b], ']');
     }
-#endif
 
+    /**
+     * TODO: boats schedule optimization
+     * 1. a few frame waiting
+     * 2. reverse send inference
+    */
     for (int32_t i = 0; i < boats.size(); ++i) {
       int32_t boat_status = get_boat_status(boats[i], i, map.terminals);
-      logger->log("boat/status", "boat: ", i, ", status: ", boat_status);
+      logger->log("boat/status", "boat: ", i, ", status: ", BOAT_STATUS[boat_status], ", dock: ", boats[i].dock);
+      bool must_go = false;
+      if (boat_status > 1) {
+        // must_go check
+        int32_t arrive_time = frame + map.terminals[boats[i].dock].transport_time + 1;
+        must_go = arrive_time == initial_config.max_frame;
+        if (must_go) { /* U should go now */
+          boat_status = 3;
+          logger->log("go", "force boat: ", i, " to leave at frame: ", frame, ". Arrive at ", arrive_time);
+        }
+      }
       switch (boat_status) {
         case 1: /* skip */ break;
         case 0: // selector (from VP to berth)
         case 2: {// selector (from berth to berth)
           // goto the berth which has the most goods and no other boat wants to approach
-          int32_t gc=0, ti=0;
+          int32_t gc=0, ti=-1;
           for (int32_t b = 0; b < map.terminals.size(); ++b) {
             if (map.terminals[b].goods_todo > gc && map.terminals[b].reservable()) {
               gc = map.terminals[b].goods_todo;
               ti = b;
             }
           }
-          boats[i].dockit(ti);
-          map.terminals[ti].reserve(i);
-          writer.ship(i, ti);
-          logger->log("ship/reserve", "boat: ", i, " wanna berth: ", ti, " to deal with goods count: ", gc);
+          if (ti != -1) {
+            logger->log("ship/reserve", "boat: ", i, " wanna berth: ", ti, " to deal with goods count: ", gc, ". Arrive at ", frame + 1 + transport_time(boats[i].dock, ti, map.terminals));
+            boats[i].dockit(ti);
+            map.terminals[ti].reserve(i);
+            writer.ship(i, ti);
+          }
         }
           break;
         case 3: {// go
@@ -262,14 +268,15 @@ int main(int argc, char** argv) {
           bool goods_clear = worker.goods_todo == 0;
           logger->log("leave/check", "boat: ", i,
                       ", goods loaded: ", worker.goods_done,
-                      ", fully_loaded: ", fully_loaded);
-          if (get_goods && (goods_clear || fully_loaded)) {
+                      ", fully_loaded: ", fully_loaded,
+                      ", must_go: ", must_go);
+          if (must_go || (get_goods && (goods_clear || fully_loaded))) {
                 // the boat has loaded some goods (or fully loaded)
                 // and there is no remaining goods
             logger->log(
                 "go", "boat: ", i, " leaves from berth: ", boats[i].dock,
                 " with goods carrying: ", worker.goods_done,
-                " it should score at frame: ", frame + worker.transport_time);
+                " it should score at frame: ", frame + 1 + worker.transport_time);
             boats[i].leave();
             worker.leave();
             writer.go(i);
@@ -286,70 +293,11 @@ int main(int argc, char** argv) {
           break;
       }
     }
-/** old schdule policy
-    // trash logic for earn gold: all the boats serve the test one
-    // TODO: design the berth-search logic
-    int32_t nearest_berth = robot_terminal[0];  // desired berth
-    // send a boat here
-    if (nearest_berth != -1) {
-      for (int32_t i = 0; i < boats.size();
-           ++i) {  // a shipping map should be here
-        if (boats[i].dock == -1 && boats[i].status == 1) {
-          boats[i].dockit(nearest_berth);
-          writer.ship(i, nearest_berth);
-          logger->log("ship/near", "boat: ", i,
-                      " goes to berth: ", nearest_berth);
-          break;
-        }
-      }
-    }
 
-
-    // iterate over all berths and send the boats
-    for (int32_t i = 0; i < map.terminals.size(); ++i) {
-      int32_t nearest_berth = i;  // reuse the old code
-      if (map.terminals[nearest_berth].dock_boat_id != -1) {
-        // calculate remaining goods
-        // whether here is any goods
-        Berth& worker = map.terminals[nearest_berth];
-        logger->log("berth/info", "berth: ", nearest_berth,
-                    " goods remaining: ", worker.goods_todo,
-                    ", goods have been loaded: ", worker.goods_done);
-        bool finish = worker.load();
-        int32_t boat_id = worker.dock_boat_id;
-        bool get_goods = worker.goods_done > 0;
-        bool fully_loaded = boats[boat_id].capacity == worker.goods_done;
-        bool goods_clear = worker.goods_todo == 0;
-        logger->log("leave/check", "boat: ", boat_id,
-                    ", goods loaded: ", worker.goods_done,
-                    ", fully_loaded: ", fully_loaded);
-        if (get_goods &&
-            (goods_clear ||
-             fully_loaded)) {  // the boat has loaded some goods (or fully
-                               // loaded) and there is no remaining goods
-          logger->log(
-              "go", "boat: ", boat_id, " leaves from berth: ", nearest_berth,
-              " with goods carrying: ", worker.goods_done,
-              " it should score at frame: ", frame + worker.transport_time);
-          boats[boat_id].leave();
-          worker.leave();
-          writer.go(boat_id);
-        }
-      }
-      // WTF logic
-      for (int32_t i = 0; i < boats.size(); ++i) {
-        if (boats[i].dock == -1 && boats[i].status == 1 && !boats[i].leaving) {
-          boats[i].dockit(nearest_berth);
-          writer.ship(i, nearest_berth);
-          logger->log("ship/it", "boat: ", i,
-                      " goes to berth: ", nearest_berth);
-        }
-      }
-    }
-*/
 #pragma endregion
     writer.ok();
   }
   writer.ok();  // game over
+  logger->log("berth/check", map.terminals);
   return 0;
 }
