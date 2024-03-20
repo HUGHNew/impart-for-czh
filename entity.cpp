@@ -38,7 +38,8 @@ std::ostream& operator<<(std::ostream& out, const Berth& berth) {
   return out << berth.pos << ", trans: " << berth.transport_time
              << ", speed: " << berth.load_speed
              << ", goods: " << berth.goods_todo << "/" << berth.goods_done
-             << ", boat_id: " << berth.dock_boat_id;
+             << ", boat_id: " << berth.dock_boat_id
+             << ", book_boat_id: " << berth.book_boat_id;
 }
 
 std::ostream& operator<<(std::ostream& out, const Boat& boat) {
