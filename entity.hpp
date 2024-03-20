@@ -118,21 +118,19 @@ constexpr int32_t transport_time(const Berth& from, const Berth& to) {
 struct Boat {
   constexpr static GridLocation size{2, 4};
   int32_t capacity, status /* 0: move, 1: load, 2: wait */, dock = -1;
-  int32_t approach = -1; // for berth dist. it's useless if dock != -1
   bool leaving = false;
 
   Boat() = default;
   Boat(int32_t capacity_) : capacity(capacity_) {}
-  void book(int32_t id) { approach = id; }
   void dockit(int32_t id) {
     dock = id;
-    approach = -1; // reset approaching status (who cares)
     leaving = false;
   }
   void leave() {
     dock = -1;
     leaving = true;
   }
+  /* in the virtual point or wait at the berth */
   bool idle() const { 
     return (dock == -1 && status == 1) || (dock != -1 && status == 2);
   }
@@ -195,9 +193,12 @@ std::ostream& operator<<(std::ostream& out, const std::deque<_Tp>& sequence) {
 
 #pragma region entity interaction function
 /**
- * 0: idle boat. Able to ship to any berth
- * 1: nothing to do with no goods. Ship to other berth
- * 2: nothing to do with goods loaded. GO
+ * 0: idle boat. Able to ship to any berth [boat.idle()]
+ * 1: moving. DO NOT DISTURB IT [status==0]
+ * loading.[dock!=-1, status==1]
+ * 2: nothing to do with no goods. Ship to other berth
+ * 3: nothing to do with goods loaded. GO
+ * 4: loading. DO NOT DISTURB IT
 */
 int32_t get_boat_status(const Boat& boat, int32_t boat_id, const std::vector<Berth>& berths);
 #pragma endregion

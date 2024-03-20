@@ -13,14 +13,14 @@ inline void stream_io_init() {
 const char* DIR_NAME[] = {"right", "left", "up", "down"};
 
 /** robot count: 1
- * 1. 22201
- * 2. 24666
- * 3. 23536
- * 4. 10943
- * 5. 16384
- * 6. 28413
- * 7. 17242
- * 8. 20385
+ * 1. 22201 -> 26970
+ * 2. 24666 -> 25622
+ * 3. 23536 -> 26805
+ * 4. 10943 -> 13987
+ * 5. 16384 -> 20993
+ * 6. 28413 -> 29172
+ * 7. 17242 -> 18753
+ * 8. 20385 -> 22081
  */
 
 int main(int argc, char** argv) {
@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
         // GridLocation target = map.robots[test_robot_id].goods?
         // to_berth[test_robot_id][*robot_dir[test_robot_id]] :
         // to_goods[test_robot_id][*robot_dir[test_robot_id]];
-        logger->log("dir", "robot: ", robot_id, "source: ", map.robots[robot_id].pos,
+        logger->log("dir", "robot: ", robot_id, ", source: ", map.robots[robot_id].pos,
                     " -> target: ", target);
         try {
           int32_t dir =
@@ -225,6 +225,68 @@ int main(int argc, char** argv) {
         }
       }
     }
+
+    // the last trip for cash before DDL
+    // TODO: new boat schedule algo
+#if LOG_ENABLE == 1
+    for (int32_t b = 0; b < map.terminals.size(); ++b) {
+      logger->log("berth/status", "reservable: ", map.terminals[b].reservable(), "\nBerth:" ,map.terminals[b]);
+    }
+#endif
+
+    for (int32_t i = 0; i < boats.size(); ++i) {
+      int32_t boat_status = get_boat_status(boats[i], i, map.terminals);
+      logger->log("boat/status", "boat: ", i, ", status: ", boat_status);
+      switch (boat_status) {
+        case 1: /* skip */ break;
+        case 0: // selector (from VP to berth)
+        case 2: {// selector (from berth to berth)
+          // goto the berth which has the most goods and no other boat wants to approach
+          int32_t gc=0, ti=0;
+          for (int32_t b = 0; b < map.terminals.size(); ++b) {
+            if (map.terminals[b].goods_todo > gc && map.terminals[b].reservable()) {
+              gc = map.terminals[b].goods_todo;
+              ti = b;
+            }
+          }
+          boats[i].dockit(ti);
+          map.terminals[ti].reserve(i);
+          writer.ship(i, ti);
+          logger->log("ship/reserve", "boat: ", i, " wanna berth: ", ti, " to deal with goods count: ", gc);
+        }
+          break;
+        case 3: {// go
+          Berth& worker = map.terminals[boats[i].dock];
+          bool get_goods = worker.goods_done > 0;
+          bool fully_loaded = boats[i].capacity == worker.goods_done;
+          bool goods_clear = worker.goods_todo == 0;
+          logger->log("leave/check", "boat: ", i,
+                      ", goods loaded: ", worker.goods_done,
+                      ", fully_loaded: ", fully_loaded);
+          if (get_goods && (goods_clear || fully_loaded)) {
+                // the boat has loaded some goods (or fully loaded)
+                // and there is no remaining goods
+            logger->log(
+                "go", "boat: ", i, " leaves from berth: ", boats[i].dock,
+                " with goods carrying: ", worker.goods_done,
+                " it should score at frame: ", frame + worker.transport_time);
+            boats[i].leave();
+            worker.leave();
+            writer.go(i);
+          }
+        }
+          break;
+        case 4: {// loading. call the func
+          int32_t berth_id = boats[i].dock;
+          bool finish = map.terminals[berth_id].load();
+          logger->log("berth/info", "berth: ", berth_id,
+                      " goods remaining: ", map.terminals[berth_id].goods_todo,
+                      ", goods have been loaded: ", map.terminals[berth_id].goods_done);
+        }
+          break;
+      }
+    }
+/** old schdule policy
     // trash logic for earn gold: all the boats serve the test one
     // TODO: design the berth-search logic
     int32_t nearest_berth = robot_terminal[0];  // desired berth
@@ -284,6 +346,7 @@ int main(int argc, char** argv) {
         }
       }
     }
+*/
 #pragma endregion
     writer.ok();
   }
