@@ -115,8 +115,8 @@ struct Berth {
 constexpr int32_t transport_time(const Berth& from, const Berth& to) {
   return 500; /* frames */
 }
-template<typename _T, template<typename>typename _Seq>
-int32_t transport_time(int32_t src_idx, int32_t dst_idx, const _Seq<_T>& berths) {
+
+int32_t transport_time(int32_t src_idx, int32_t dst_idx, const std::vector<Berth>& berths) {
   if (src_idx == -1 || dst_idx == -1) { // They can't both be -1 (VP)
     return berths[src_idx+dst_idx+1].transport_time;
   } else {
@@ -301,13 +301,3 @@ struct PriorityQueue {
   }
 };
 
-struct Game {
-  EqWeightGrid map;
-  std::deque<Goods> goods;
-  GameStatus status;
-
-  Game() = default;
-  void test() {
-    // goods.erase
-  }
-};
