@@ -116,13 +116,7 @@ constexpr int32_t transport_time(const Berth& from, const Berth& to) {
   return 500; /* frames */
 }
 
-int32_t transport_time(int32_t src_idx, int32_t dst_idx, const std::vector<Berth>& berths) {
-  if (src_idx == -1 || dst_idx == -1) { // They can't both be -1 (VP)
-    return berths[src_idx+dst_idx+1].transport_time;
-  } else {
-    return 500; /* frames */
-  }
-}
+int32_t transport_time(int32_t src_idx, int32_t dst_idx, const std::vector<Berth>& berths);
 
 struct Boat {
   constexpr static GridLocation size{2, 4};
