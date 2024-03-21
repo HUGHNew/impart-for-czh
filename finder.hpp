@@ -69,6 +69,17 @@ void trace(std::unordered_map<Location, Location>& came_from,
   logger->log("trace", "track length: ", track.size());
 }
 
+template <typename Grid, typename Location>
+int32_t route(
+    Grid& grid, Location launch, Location target, std::vector<Location>& track,
+    std::function<double(Location a, Location b)> heuristic = manhattan) {
+  std::unordered_map<Location, Location> came_from;
+  std::unordered_map<Location, double> cost_so_far;
+  search(grid, launch, target, came_from, cost_so_far, heuristic);
+  trace(came_from, track, target);
+  return track.size();
+}
+
 template <typename Location, template <typename> typename Sequence>
 int32_t find_nearset_from_loc(Location source, Sequence<Berth>& berths) {
   int32_t index, dist, nearsest = 1 << 31;

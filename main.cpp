@@ -39,18 +39,10 @@ int main(int argc, char** argv) {
   std::vector<Boat> boats(initial_config.num_boat, map.capacity);
 #pragma region variables for robots
   // forward GOODS
-  std::vector<std::unordered_map<GridLocation, GridLocation>> robot_came_from(
-      initial_config.num_robot);
-  std::vector<std::unordered_map<GridLocation, double>> robot_cost_so_far(
-      initial_config.num_robot);
   std::vector<int32_t> robot_task(initial_config.num_robot, -1);
   std::vector<std::vector<GridLocation>> to_goods(
       initial_config.num_robot); /* track from goods to robot */
   // forward BERTH
-  std::vector<std::unordered_map<GridLocation, GridLocation>> berth_came_from(
-      initial_config.num_robot);
-  std::vector<std::unordered_map<GridLocation, double>> berth_cost_so_far(
-      initial_config.num_robot);
   std::vector<std::vector<GridLocation>> to_berth(
       initial_config.num_robot); /* track from berth to goods */
   std::vector<int32_t> robot_terminal(initial_config.num_robot, -1); /* berth to go while carrying */
@@ -91,10 +83,7 @@ int main(int argc, char** argv) {
           // continue;
           break;
         } else {  // U really have a target
-          search(map, map.robots[robot_id].pos, goods[robot_task[robot_id]].pos,
-                 robot_came_from[robot_id], robot_cost_so_far[robot_id]);
-          trace<GridLocation>(robot_came_from[robot_id], to_goods[robot_id],
-                              goods[robot_task[robot_id]].pos);
+          int32_t pathlen = route(map, map.robots[robot_id].pos, goods[robot_task[robot_id]].pos, to_goods[robot_id]);
           robot_forward[robot_id] = to_goods[robot_id].size() - 1;
           robot_dir[robot_id] = &robot_forward[robot_id];
           goods.erase(goods.begin() +
@@ -124,8 +113,6 @@ int main(int argc, char** argv) {
           map.robots[robot_id].goods = false;
           robot_terminal[robot_id] = -1;
           // clear puller track
-          berth_came_from[robot_id].clear();
-          berth_cost_so_far[robot_id].clear();
           to_berth[robot_id].clear();
           robot_target_ptr[robot_id] = nullptr;
         } else {
@@ -135,8 +122,6 @@ int main(int argc, char** argv) {
           map.robots[robot_id].goods = true;
           robot_dir[robot_id] = &robot_backward[robot_id];
           // clear getter track
-          robot_came_from[robot_id].clear();
-          robot_cost_so_far[robot_id].clear();
           to_goods[robot_id].clear();
 
           robot_terminal[robot_id] = target_select<Berth, std::vector>(
@@ -144,11 +129,7 @@ int main(int argc, char** argv) {
               [](Berth b, int32_t pred) -> int32_t {
                 return b.load_speed * 100 - pred;
               });
-          search(map, map.robots[robot_id].pos,
-                 map.terminals[robot_terminal[robot_id]].pos,
-                 berth_came_from[robot_id], berth_cost_so_far[robot_id]);
-          trace(berth_came_from[robot_id], to_berth[robot_id],
-                map.terminals[robot_terminal[robot_id]].pos);
+          route(map, map.robots[robot_id].pos, map.terminals[robot_terminal[robot_id]].pos, to_berth[robot_id]);
           robot_backward[robot_id] = to_berth[robot_id].size() - 1;
           robot_target_ptr[robot_id] = &to_berth[robot_id];
           logger->log("robot",
@@ -186,13 +167,9 @@ int main(int argc, char** argv) {
 
           robot_dir[robot_id] = nullptr;
           // clear get track
-          robot_came_from[robot_id].clear();
-          robot_cost_so_far[robot_id].clear();
           to_goods[robot_id].clear();
 
           // clear puller track
-          berth_came_from[robot_id].clear();
-          berth_cost_so_far[robot_id].clear();
           to_berth[robot_id].clear();
           robot_target_ptr[robot_id] = nullptr;
         }
