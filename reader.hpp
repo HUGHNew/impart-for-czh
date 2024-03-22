@@ -30,10 +30,10 @@ struct Reader {
   }
   template <typename Bt>
   void read_berths(std::vector<Bt>& berths, std::istream& ins) {
-    logger->log("reader", "loading berths");
+    logger->debug("reader", "loading berths");
     for (int32_t i = 0; i < berths.capacity(); ++i) {
       const Bt& berth = read_berth<Bt>(ins);
-      logger->log("reader/berth", berth);
+      logger->debug("reader/berth", berth);
       berths.emplace_back(berth);
     }
   }
@@ -51,7 +51,7 @@ struct Reader {
   template <typename Grid, typename Bt>
   void initilize(Grid& grid, std::vector<Bt>& berths, int32_t& capacity,
                  const GameConfig& config, std::istream& ins = std::cin) {
-    logger->log("reader", "Reader::initilize");
+    logger->info("reader", "Reader::initilize");
     read_grid(grid, config, ins);
     read_berths(berths, ins);
     read_capacity(capacity, ins);
@@ -68,7 +68,7 @@ struct Reader {
 #pragma region frame updating components
   void update_game_status(GameStatus& status, std::istream& ins = std::cin) {
     ins >> status.frame >> status.gold;
-    logger->log("reader/game_status", status);
+    logger->info("reader/game_status", status);
   }
 
   template <template <typename> typename Sequence>
@@ -76,12 +76,12 @@ struct Reader {
                     std::istream& ins = std::cin) {
     int32_t num_goods;
     ins >> num_goods;
-    logger->log("reader/num_goods", std::to_string(num_goods));
+    logger->info("reader/num_goods", num_goods);
     int32_t x, y, val;
     for (int32_t i = 0; i < num_goods; ++i) {
       ins >> x >> y >> val;
       goods.emplace_back(x, y, val, frame);
-      logger->log("reader/goods", goods.back());
+      logger->debug("reader/goods", goods.back());
     }
   }
 
@@ -90,7 +90,7 @@ struct Reader {
                             std::istream& ins = std::cin) {
     for (Robot& robot : robots) {
       ins >> robot.goods >> robot.pos.x >> robot.pos.y >> robot.running;
-      logger->log("reader/robot", robot);
+      logger->debug("reader/robot", robot);
     }
   }
 
@@ -99,7 +99,7 @@ struct Reader {
                            std::istream& ins = std::cin) {
     for (Boat& boat : cargo) {
       ins >> boat.status >> boat.dock;
-      logger->log("reader/boat", boat);
+      logger->debug("reader/boat", boat);
     }
   }
 

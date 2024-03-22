@@ -59,6 +59,10 @@ std::ostream& operator<<(std::ostream& out, const Goods& goods) {
              << ", birthday: " << goods.birthday;
 }
 
+std::ostream& operator<<(std::ostream& out, const Collector& collector) {
+  return out << "count: " << collector.count << ", value: " << collector.value;
+}
+
 std::ostream& operator<<(std::ostream& out, const GameStatus& status) {
   return out << "frame: " << status.frame << ", gold: " << status.gold;
 }

@@ -61,14 +61,33 @@ struct hash<GridLocation> {
 
 struct Robot {
   GridLocation pos;
-  int32_t stay_frame;                 /* for resume reference */
-  constexpr static int32_t STAY = 20; /* frames */
+  int32_t stay_frame;                  /* for resume reference */
+  int32_t dist_lock=200, lock_delta=5; /* for quick goods pick */
+  int32_t wait_count=0, wait_limit=3; /* for quick goods pick policy update */
+  constexpr static int32_t STAY = 20;  /* frames */
   bool running = true;
   bool goods = false;
 
   Robot() = default;
   Robot(int32_t x, int32_t y) : pos{x, y} {}
   Robot(GridLocation pos_) : pos(pos_) {}
+
+  bool skip(int32_t path_length) {
+    return false; // close it for greedy schedule
+    if (path_length <= dist_lock) {
+      wait_count++;
+      if (wait_count == wait_limit) {
+        dist_lock -= lock_delta;
+        wait_count = 0;
+      } return false;
+    } else {
+      wait_count--;
+      if (wait_count == -wait_limit) {
+        dist_lock += lock_delta;
+        wait_count = 0;
+      } return true;
+    }
+  }
 };
 
 struct Berth {
@@ -135,8 +154,11 @@ struct Boat {
   }
   /* in the virtual point or wait at the berth */
   bool idle() const { 
-    return (dock == -1 && status == 1) || (dock != -1 && status == 2);
+    return ready() || waiting();
   }
+  /* ready to go anywhere from Virtual Point */
+  bool ready() const { return dock == -1 && status == 1; }
+  bool waiting() const { return dock != -1 && status == 2; }
 };
 
 struct GameStatus {
@@ -149,6 +171,16 @@ struct Goods {
 
   Goods(int32_t x, int32_t y, int32_t value_, int32_t birthday_)
       : pos{x, y}, value(value_), birthday(birthday_) {}
+};
+
+struct Collector {
+  int32_t count=0, value=0;
+
+  Collector() = default;
+  void collect(const Goods& goods) {
+    count++;
+    value += goods.value;
+  }
 };
 namespace std {
 /* implement hash function so we can put GridLocation into an unordered_set */
@@ -166,6 +198,7 @@ std::ostream& operator<<(std::ostream& out, const Robot& robot);
 std::ostream& operator<<(std::ostream& out, const Berth& berth);
 std::ostream& operator<<(std::ostream& out, const Boat& boat);
 std::ostream& operator<<(std::ostream& out, const Goods& goods);
+std::ostream& operator<<(std::ostream& out, const Collector&);
 std::ostream& operator<<(std::ostream& out, const GameStatus& status);
 
 template <typename _Tp, template <typename> typename _Seq>

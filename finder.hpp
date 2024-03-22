@@ -65,8 +65,8 @@ void trace(std::unordered_map<Location, Location>& came_from,
     track.emplace_back(previous);
     previous = came_from[previous];
   }
-  logger->log("trace", track);  // target, target.previous, ..., start.next
-  logger->log("trace", "track length: ", track.size());
+  logger->debug("trace", track);  // target, target.previous, ..., start.next
+  logger->info("trace", "track length: ", track.size());
 }
 
 template <typename Grid, typename Location>
