@@ -168,9 +168,15 @@ struct GameStatus {
 struct Goods {
   GridLocation pos;
   int32_t value, birthday, lifetime = 1000 /* frames */;
+  bool stub;
 
   Goods(int32_t x, int32_t y, int32_t value_, int32_t birthday_)
-      : pos{x, y}, value(value_), birthday(birthday_) {}
+      : pos{x, y}, value(value_), birthday(birthday_), stub(false) {}
+  Goods(): pos{0, 0}, value(0), birthday(0), stub(true) {}
+
+  bool operator==(const Goods& other) const {
+    return pos == other.pos && value == other.value && birthday == other.birthday;
+  }
 };
 
 struct Collector {

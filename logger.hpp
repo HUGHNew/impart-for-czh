@@ -89,11 +89,6 @@ class SimpleLogger {
       : logfile(log_), limitation(level), handler(log_, mode) {}
   ~SimpleLogger() { handler.close(); }
 
-  template <typename T>
-  void log(const char* tag, const T& msg) {
-    log_time_header();
-    handler << '[' << tag << ']' << msg << std::endl;
-  }
   template <typename T, typename... Args>
   void log_level(LogLevel level, const char* tag, const T& msg,
                  const Args&... args) {

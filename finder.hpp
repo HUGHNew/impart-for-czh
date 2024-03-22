@@ -7,19 +7,21 @@ inline double manhattan(GridLocation a, GridLocation b) {
   return std::abs(a.x - b.x) + std::abs(a.y - b.y);
 }
 
-template <typename El, template <typename> typename Sequence>
-int32_t target_select(const Robot& robot, Sequence<El>& elements,
-                      std::function<int32_t(El, int32_t)> value_ordering) {
-  int32_t max_value = -400, pred_dist = 0, cur_value, elem_idx = -1;
-  for (int32_t i = 0; i < elements.size(); ++i) {
-    pred_dist = manhattan(robot.pos, elements[i].pos);
-    cur_value = value_ordering(elements[i], pred_dist);  // value ordering
+template <typename El, template <typename> typename Iterable>
+auto target_select(const Robot& robot, Iterable<El>& elements,
+                   std::function<int32_t(El, int32_t)> value_ordering)
+    -> decltype(elements.end()) {
+  int32_t max_value = -400, pred_dist = 0, cur_value;
+  auto elem_ptr = elements.end();
+  for (auto begin = elements.begin(); begin != elements.end(); ++begin) {
+    pred_dist = manhattan(robot.pos, begin->pos);
+    cur_value = value_ordering(*begin, pred_dist);  // value ordering
     if (cur_value > max_value) {
       max_value = cur_value;
-      elem_idx = i;
+      elem_ptr = begin;
     }
   }
-  return elem_idx;
+  return elem_ptr;
 }
 
 template <typename Grid, typename Location>

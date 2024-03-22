@@ -55,6 +55,9 @@ std::ostream& operator<<(std::ostream& out, const Boat& boat) {
 }
 
 std::ostream& operator<<(std::ostream& out, const Goods& goods) {
+  if (goods.stub) {
+    return out << "stub";
+  }
   return out << goods.pos << ", value: " << goods.value
              << ", birthday: " << goods.birthday;
 }

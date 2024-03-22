@@ -80,8 +80,9 @@ struct Reader {
     int32_t x, y, val;
     for (int32_t i = 0; i < num_goods; ++i) {
       ins >> x >> y >> val;
-      goods.emplace_back(x, y, val, frame);
-      logger->debug("reader/goods", goods.back());
+      Goods g(x, y, val, frame);
+      goods.emplace(g);
+      logger->debug("reader/goods", g);
     }
   }
 
