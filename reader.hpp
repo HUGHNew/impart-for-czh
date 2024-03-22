@@ -63,8 +63,6 @@ struct Reader {
     initilize(grid, grid.terminals, grid.capacity, config, ins);
   }
 
-  // void initilize(EqWeightGrid<10U>& grid, const GameConfig& config,
-  // std::istream& ins=std::cin);
 #pragma region frame updating components
   void update_game_status(GameStatus& status, std::istream& ins = std::cin) {
     ins >> status.frame >> status.gold;
@@ -75,6 +73,11 @@ struct Reader {
   void update_goods(Sequence<Goods>& goods, int32_t frame,
                     std::istream& ins = std::cin) {
     int32_t num_goods;
+    for (auto it = goods.begin(); it != goods.end();) {
+      if (it->birthday + it->lifetime == frame) {
+        it = goods.erase(it);
+      } else { ++it; } // clear expired goods
+    }
     ins >> num_goods;
     logger->info("reader/num_goods", num_goods);
     int32_t x, y, val;
