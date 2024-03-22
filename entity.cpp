@@ -11,13 +11,20 @@ std::vector<GridLocation> SquareGrid::neighbors(
     }
   }
 
-  // TODO: It does not affect efficiency
-  // if ((id.x + id.y) % 2 == 0) {
-  //   // make the path straighter
-  //   std::reverse(results.begin(), results.end());
-  // }
+  if ((id.x + id.y) % 2 == 0) {
+    // make the path straighter
+    std::reverse(results.begin(), results.end());
+  }
 
   return results;
+}
+
+int32_t transport_time(int32_t src_idx, int32_t dst_idx, const std::vector<Berth>& berths) {
+  if (src_idx == -1 || dst_idx == -1) { // They can't both be -1 (VP)
+    return berths[src_idx+dst_idx+1].transport_time;
+  } else {
+    return 500; /* frames */
+  }
 }
 
 std::array<GridLocation, 4> SquareGrid::DIRS = {
@@ -50,6 +57,10 @@ std::ostream& operator<<(std::ostream& out, const Boat& boat) {
 std::ostream& operator<<(std::ostream& out, const Goods& goods) {
   return out << goods.pos << ", value: " << goods.value
              << ", birthday: " << goods.birthday;
+}
+
+std::ostream& operator<<(std::ostream& out, const Collector& collector) {
+  return out << "count: " << collector.count << ", value: " << collector.value;
 }
 
 std::ostream& operator<<(std::ostream& out, const GameStatus& status) {

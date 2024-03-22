@@ -65,8 +65,19 @@ void trace(std::unordered_map<Location, Location>& came_from,
     track.emplace_back(previous);
     previous = came_from[previous];
   }
-  logger->log("trace", track);  // target, target.previous, ..., start.next
-  logger->log("trace", "track length: ", track.size());
+  logger->debug("trace", track);  // target, target.previous, ..., start.next
+  logger->info("trace", "track length: ", track.size());
+}
+
+template <typename Grid, typename Location>
+int32_t route(
+    Grid& grid, Location launch, Location target, std::vector<Location>& track,
+    std::function<double(Location a, Location b)> heuristic = manhattan) {
+  std::unordered_map<Location, Location> came_from;
+  std::unordered_map<Location, double> cost_so_far;
+  search(grid, launch, target, came_from, cost_so_far, heuristic);
+  trace(came_from, track, target);
+  return track.size();
 }
 
 template <typename Location, template <typename> typename Sequence>
