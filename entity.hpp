@@ -67,6 +67,7 @@ struct Robot {
   int32_t dist_lock=200, lock_delta=5; /* for quick goods pick */
   int32_t wait_count=0, wait_limit=3; /* for quick goods pick policy update */
   constexpr static int32_t STAY = 20;  /* frames */
+  int32_t switch_limit = 20, switch_bar = 10; /* remain for optimization */
   bool running = true;
   bool goods = false;
 
@@ -188,6 +189,9 @@ struct Collector {
   void collect(const Goods& goods) {
     count++;
     value += goods.value;
+  }
+  void recollect(const Goods& prev, const Goods& curr) {
+    value += curr.value - prev.value;
   }
 };
 namespace std {

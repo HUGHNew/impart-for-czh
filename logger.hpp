@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <vector>
 
+#define LOCAL_HOST 1
 #define LOG_ENABLE 1
 
 class DummyLogger {
@@ -135,7 +136,7 @@ inline std::unique_ptr<_Tp> make_unique(_Args&&... __args) {
 using std::make_unique;
 #endif
 
-#if LOG_ENABLE == 1
+#if LOCAL_HOST == 1 && LOG_ENABLE == 1
 static std::unique_ptr<SimpleLogger> logger =
     make_unique<SimpleLogger>("cc.log");
 #else

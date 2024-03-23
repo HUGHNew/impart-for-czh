@@ -65,7 +65,11 @@ int main(int argc, char** argv) {
   writer.ok();
 
   const int32_t robot_count_limit =
+#if LOCAL_HOST == 0
+      1;
+#else
       argc > 1 ? std::atoi(argv[1]) : initial_config.num_robot;
+#endif
   logger->warn("robot", "robot count for game: ", robot_count_limit);
   for (int32_t frame = 0; frame < initial_config.max_frame; ++frame) {
     // get new robot position from new frame (and it will order the robots)
@@ -113,10 +117,40 @@ int main(int argc, char** argv) {
                       ", track index(robot->goods): ", *robot_dir[robot_id]);
         }
       }
+      logger->debug("redirect/test", "try to find nearest goods as new target");
+      bool is_forward = robot_dir[robot_id] == &robot_forward[robot_id];
+      bool forward_start = robot_forward[robot_id] + map.robots[robot_id].switch_bar >= to_goods[robot_id].size() - 1;
+      if (is_forward && ! forward_start) {
+        // skip instantly reroute
+        decltype(goods.end()) better_target = target_select<Goods, std::unordered_set>(
+              map.robots[robot_id], goods,
+              [](Goods goods, int32_t pred) -> int32_t {
+                return goods.value - pred;
+              });  // select one good
+        
+        if (better_target != GoodsNullPtr) {
+          std::vector<GridLocation> new_path;
+          int32_t pathlen = route(map, map.robots[robot_id].pos, better_target->pos, new_path);
+          // the length of new_path is less than the remaining length of the old path
+          if (pathlen < robot_forward[robot_id]) {
+            logger->info("redirect/succ", "robot: ", robot_id, " found better target pathlen: ", pathlen);
+            robot_forward[robot_id] = pathlen - 1;
+            collector.recollect(robot_task[robot_id], *better_target);
+            logger->info("collection", "recollect goods: ", *better_target);
+            to_goods[robot_id] = new_path;
+            goods.erase(better_target);
+            goods.emplace(robot_task[robot_id]);
+            robot_task_ptr[robot_id] = better_target;
+            robot_task[robot_id] = *robot_task_ptr[robot_id];
+          }
+        }
+      }
+
       // on the way
       logger->debug("pre/index", "robot: ", robot_id, ", goods carrying: ", map.robots[robot_id].goods,
                   ", dir_index: ", *robot_dir[robot_id]);
 
+      // if (robot_dir[robot_id] == nullptr) {
       if (*robot_dir[robot_id] == -1) {
         if (map.robots[robot_id].goods) {
           // already collect goods. on the way to berth
@@ -139,6 +173,7 @@ int main(int argc, char** argv) {
                       " get goods: ", robot_task[robot_id]);
           writer.get(robot_id);
           map.robots[robot_id].goods = true;
+          *robot_dir[robot_id] = -1;
           robot_dir[robot_id] = &robot_backward[robot_id];
           // clear getter track
           to_goods[robot_id].clear();
@@ -187,6 +222,7 @@ int main(int argc, char** argv) {
           map.robots[robot_id].goods = false;
           robot_terminal[robot_id] = -1;
 
+          *robot_dir[robot_id] = -1;
           robot_dir[robot_id] = nullptr;
           // clear get track
           to_goods[robot_id].clear();
