@@ -19,6 +19,8 @@ struct GridLocation {
   }
 };
 
+using Point = GridLocation;
+
 #pragma region GridLocation operators
 static inline bool operator==(GridLocation lhs, GridLocation rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y;
@@ -245,44 +247,6 @@ std::ostream& operator<<(std::ostream& out, const std::deque<_Tp>& sequence) {
 int32_t get_boat_status(const Boat& boat, int32_t boat_id, const std::vector<Berth>& berths);
 #pragma endregion
 
-struct SquareGrid {
-  static std::array<GridLocation, 4> DIRS;
-  static int32_t get_dirs_index(GridLocation loc) {
-    if (std::abs(loc.x) > 1 || std::abs(loc.y) > 1) {
-      throw std::runtime_error("Wrong loc for dirs indexing with " + loc);
-    }
-    int32_t dir_idx = 0;
-    for (int32_t idx = 0; idx < 4; ++idx) {
-      if (DIRS[idx] == loc) {
-        dir_idx = idx;
-        break;
-      }
-    }
-    return dir_idx;
-  }
-
-  static int32_t get_dirs_index(GridLocation source, GridLocation target) {
-    return get_dirs_index(
-        GridLocation{target.x - source.x, target.y - source.y});
-  }
-
-  int32_t width, height;
-  std::unordered_set<GridLocation> walls;
-
-  SquareGrid(int32_t width_, int32_t height_)
-      : width(width_), height(height_) {}
-
-  inline bool in_bounds(GridLocation id) const noexcept {
-    return 0 <= id.x && id.x < width && 0 <= id.y && id.y < height;
-  }
-
-  inline bool passable(GridLocation id) const noexcept {
-    return walls.find(id) == walls.end();
-  }
-
-  std::vector<GridLocation> neighbors(GridLocation id) const noexcept;
-};
-
 template <typename Grid>
 void parse_surface_from_line(Grid& grid, const std::string& line, int lineno) {
   for (int32_t i = 0; i < line.size(); ++i) {
@@ -297,22 +261,6 @@ void parse_surface_from_line(Grid& grid, const std::string& line, int lineno) {
     }
   }
 }
-
-struct EqWeightGrid : SquareGrid {
-  std::vector<Berth> terminals;  // terminal berths
-  std::vector<Robot> robots;
-  int32_t capacity;
-  EqWeightGrid(int32_t w = 200, int32_t h = 200, int32_t num_bot = 10,
-               int32_t num_bth = 10)
-      : SquareGrid(w, h) {
-    robots.reserve(num_bot);
-    terminals.reserve(num_bth);
-  }
-  constexpr double cost(const GridLocation& from_node,
-                        const GridLocation& to_node) const noexcept {
-    return 1;
-  }
-};
 
 template <typename T, typename priority_t>
 struct PriorityQueue {

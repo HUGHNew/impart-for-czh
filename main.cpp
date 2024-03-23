@@ -4,6 +4,7 @@
 #include "reader.hpp"
 #include "writer.hpp"
 #include "scorer.h"
+#include "grid.h"
 
 inline void stream_io_init() {
   std::ios::sync_with_stdio(false);

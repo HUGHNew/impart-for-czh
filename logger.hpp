@@ -14,9 +14,15 @@ class DummyLogger {
  public:
   DummyLogger(const char* log_, std::ios_base::openmode mode = std::ios::app) {}
   template <typename T, typename... Args>
-  void log(const char*, const T&, const Args&...) {}
+  void debug(const char* tag, const T& msg, const Args&... args){}
   template <typename T, typename... Args>
-  void log(const T&, const Args&...) {}
+  void info(const char* tag, const T& msg, const Args&... args){}
+  template <typename T, typename... Args>
+  void warn(const char* tag, const T& msg, const Args&... args){}
+  template <typename T, typename... Args>
+  void error(const char* tag, const T& msg, const Args&... args){}
+  template <typename T, typename... Args>
+  void fatal(const char* tag, const T& msg, const Args&... args){}
 };
 
 typedef unsigned char byte;
